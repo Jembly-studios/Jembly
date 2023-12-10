@@ -1,0 +1,86 @@
+sav-c "Jembly made by Justus Wolff 2023 (technik_hea)"
+pri
+sav-c "Documentation written in Jembly."
+pri
+sav-c "you can look at the documentation file (documentation.JCF) as an example"
+pri
+sav-c ""
+pri
+sav-c "-------------------"
+pri
+sav-c ""
+pri
+sav-c "in Jembly, instructions are written first and all arguments are seperated with spaces after that."
+pri
+sav-c "for example: 'sav-c example'"
+pri
+sav-c "sav-c is the command in this case and example is the argument."
+pri
+sav-c "later, you will learn what sav-c does."
+pri
+sav-c "arguments are automatically detected as an number or string so dont worry about that."
+pri
+sav-c "but what if you want to use an text with spaces as an argument, you may ask"
+pri
+sav-c "simple: you use double quotes to mark an text, the space between the double quotes is the argument"
+pri
+sav-c "now lets get into it!"
+pri
+sav-c "there are 4 registers in Jembly, basically temporary saves."
+pri
+sav-c "following registers exist: A, B, C and D"
+pri
+sav-c "now press enter to continue."
+pri
+inp
+sav-c "now heres an list of instructions, read them carefully and press enter once youre done."
+pri
+sav-c "sav-a: sets register A to argument"
+pri
+sav-c "sav-b: sets register B to argument"
+pri
+sav-c "sav-c: sets register C to argument"
+pri
+sav-c "sav-d: sets register D to argument"
+pri
+sav-c "out-c: sets the specified line to the value of register C"
+pri
+sav-c "out-d: sets the specified line to the value of register D"
+pri
+sav-c "add: adds value of register A and register B and sets register C to result"
+pri
+sav-c "sub: subtracts value of register A and register B and sets register C to result"
+pri
+sav-c "pri: prints value of register C"
+pri
+sav-c "inp: asks user for input and sets value of register C"
+pri
+sav-c "HALT: exits program"
+pri
+sav-c "l-sav-a: sets register A to the text from the specified line"
+pri
+sav-c "l-sav-b: sets register B to the text from the specified line"
+pri
+sav-c "l-sav-c: sets register C to the text from the specified line"
+pri
+sav-c "l-sav-d: sets register D to the text from the specified line"
+pri
+sav-c "lsta: marks the start of a loop"
+pri
+sav-c "lsto: marks the stop of a loop. goes to lsta if register D is not 0"
+pri
+sav-c "equ: checks if register A and B are equal. if True then goes to specified line"
+pri
+sav-c "goto: goes to specified line"
+pri
+inp
+sav-c "nice! now comes the challenge, to test if you understand the instructions, edit the 79th (sav-a 1) line of the code so that the code wont stop"
+pri
+
+sav-a 1
+
+sav-b 0
+equ 84
+HALT
+sav-c "congrats! you learned the basics of Jembly! this little interactive documentation is now finished but you can use it as an example and for learning. have fun using this programming language!"
+pri
