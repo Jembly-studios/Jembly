@@ -1,0 +1,46 @@
+sav-c "------calculator written in Jembly. made by technik_hea 2023------"
+pri
+
+
+
+sav-c "enter number 1."
+pri
+inp
+out-c 40
+sav-c "enter number 2."
+pri
+inp
+out-c 41
+sav-c "please select operator. following options exist: addition, subtraction."
+pri
+inp
+out-c 42
+l-sav-b 42
+l-sav-a 43
+equ 26
+l-sav-a 44
+equ 32
+sav-c "ERROR: unknown operator. please try again."
+pri
+goto 4
+
+l-sav-a 40
+l-sav-b 41
+add
+pri
+goto 4
+
+l-sav-a 40
+l-sav-b 41
+sub
+pri
+goto 4
+
+
+
+
+
+
+addition
+subtraction
+
