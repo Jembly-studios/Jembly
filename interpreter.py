@@ -2,10 +2,38 @@ import tkinter as tk
 from tkinter import filedialog
 from io import StringIO
 import sys
+import easygui
+import threading
+
+class LineNumbers(tk.Text):
+    def __init__(self, master, text_widget, **kwargs):
+        super().__init__(master, **kwargs)
+
+        self.text_widget = text_widget
+        self.text_widget.bind('<KeyRelease>', self.on_key_release)
+        self.text_widget.bind('<FocusIn>', self.on_key_release)
+
+        self.insert(1.0, '1')
+        self.configure(state='disabled')
+
+    def on_key_release(self, event=None):
+        p, q = self.text_widget.index("@0,0").split('.')
+        p = int(p)
+        final_index = str(self.text_widget.index(tk.END))
+        num_of_lines = final_index.split('.')[0]
+        line_numbers_string = "\n".join(str(p + no) for no in range(int(num_of_lines)))
+        width = len(str(num_of_lines))
+
+        self.configure(state='normal', width=width)
+        self.delete(1.0, tk.END)
+        self.insert(1.0, line_numbers_string)
+        self.configure(state='disabled')
 
 class interpreter():
     def __init__(self):
         self.states = {}
+        self.errors = []
+        self.EMHALT = False
         self.instructions = {
             "sav-a": lambda val: self.setstate("a", val),
             "sav-b": lambda val: self.setstate("b", val),
@@ -31,8 +59,11 @@ class interpreter():
         self.lines = []
 
     def equ(self, line):
-        if self.states["a"] == self.states["b"]:
-            self.goto(line)
+        try:
+            if self.states["a"] == self.states["b"]:
+                self.goto(line)
+        except:
+            self.errors.append(("Register A and B are not saved/set yet", self.pointer),)
 
     def goto(self, line):
         self.pointer = int(line)-1
@@ -51,14 +82,24 @@ class interpreter():
         return False
 
     def lsto(self):
-        if self.states["d"] != "0":
-            self.pointer = self.findfirstcom("lsta")
+        try:
+            if self.states["d"] != "0":
+                temp = self.findfirstcom("lsta")
+                if temp == False:
+                    self.errors.append(("lsta wasn't found", self.pointer),)
+                else:
+                    self.pointer = self.findfirstcom("lsta")
+        except:
+            self.errors.append(("Register D is not saved/set yet", self.pointer),)
 
     def lsetstate(self, state, val):
         self.states[state] = self.lines[int(val)]
 
     def pri(self):
-        print(self.states["c"])
+        try:
+            print(self.states["c"])
+        except:
+            self.errors.append(("Register C has not been saved/set yet", self.pointer),)
 
     def inp(self):
         self.setstate("c", input("in: "))
@@ -67,6 +108,7 @@ class interpreter():
         if self.states["a"].isnumeric() == True and self.states["b"].isnumeric() == True:
             self.setstate("c", str(int(self.states["a"])+int(self.states["b"])))
         else:
+            self.errors.append(("non-numeric registers", self.pointer),)
             raise ValueError("non-numeric registers")
 
     def halt(self):
@@ -76,10 +118,14 @@ class interpreter():
         if self.states["a"].isnumeric() == True and self.states["b"].isnumeric() == True:
             self.setstate("c", str(int(self.states["a"])-int(self.states["b"])))
         else:
+            self.errors.append(("non-numeric registers", self.pointer),)
             raise ValueError("non-numeric registers")
 
     def writestate(self, state, line):
-        self.lines[int(line)] = self.states[state]
+        try:
+            self.lines[int(line)] = self.states[state]
+        except:
+            self.errors.append(("Register {} is not saved/set yet".format(state), self.pointer),)
 
     def listtostr(self, target):
         temp = ""
@@ -88,50 +134,93 @@ class interpreter():
         temp = temp[:-1]
         return temp
 
-    def execline(self, line):
-        temp = self.lines[line].split(" ")
-        ins = temp[0]
-        temp.pop(0)
+    def execline(self, line, error_message=True):
+        if self.EMHALT == False:
+            temp = self.lines[line].split(" ")
+            ins = temp[0]
+            temp.pop(0)
 
-        temp2 = self.listtostr(temp)
-        if temp2.startswith('"'):
-            temp = temp2.replace('"', "")
-            temp = [temp]
+            temp2 = self.listtostr(temp)
+            if temp2.startswith('"'):
+                temp = temp2.replace('"', "")
+                temp = [temp]
 
-        try:
-            if len(temp) == 0:
-                self.instructions[ins]()
-            elif len(temp) == 1:
-                self.instructions[ins](temp[0])
-            elif len(temp) == 2:
-                self.instructions[ins](temp[0], temp[1])
-        except Exception as e:
-            print("error at line {}, error: {}.".format(self.pointer, e))
-            input("press enter to continue ")
+            try:
+                if len(temp) == 0:
+                    self.instructions[ins]()
+                elif len(temp) == 1:
+                    self.instructions[ins](temp[0])
+                elif len(temp) == 2:
+                    self.instructions[ins](temp[0], temp[1])
+            except Exception as e:
+                if error_message == True:
+                    print("error at line {}, error: {}.".format(self.pointer, e))
+                    input("press enter to continue ")
+                else:
+                    return True
 
     def execcode(self, code):
+        self.EMHALT = False
         self.lines = code.split("\n")
         self.pointer = 0
         while self.pointer < len(self.lines):
             if self.lines[self.pointer] != "":
-                self.execline(self.pointer)
+                temp = self.execline(self.pointer, False)
+                if temp == True:
+                    print("ERROR")
+                    break
             self.pointer += 1
         print()
         print("program finished")
+
+    def PHpri(self):
+        pass
+
+    def PHinp(self):
+        self.states["c"] = "0"
+
+    def geterrors(self, code):
+        self.instructions["inp"] = self.PHinp
+        self.instructions["pri"] = self.PHpri
+        self.errors = []
+        self.lines = code.split("\n")
+        self.pointer = 0
+        while self.pointer < len(self.lines):
+            if self.lines[self.pointer] != "":
+                self.execline(self.pointer, False)
+            self.pointer += 1
+        self.instructions["inp"] = self.inp
+        self.instructions["pri"] = self.pri
+        return self.errors
+
 
 class JemblyIDE:
     def __init__(self, root):
         self.root = root
         self.root.title("Jembly IDE")
+        self.root.resizable(False, False)
 
         self.text_editor = tk.Text(self.root, wrap="none")
-        self.text_editor.pack(expand=True, fill="both")
+        self.ln = LineNumbers(self.root, self.text_editor, width=2)
+        #self.ln.pack(side=tk.LEFT)
+        self.ln.grid(row=0, column=0)
+        #self.text_editor.pack(side=tk.LEFT, expand=True)
+        self.text_editor.grid(row=0, column=1)
 
         self.run_button = tk.Button(self.root, text="Run", command=self.run_jembly_code)
-        self.run_button.pack()
+        self.run_button.grid(row=1, column=0)
+        self.lines_button = tk.Button(self.root, text="Update lines", command=self.updatelines)
+        self.lines_button.grid(row=1, column=3)
+        self.error_button = tk.Button(self.root, text="Find errors", command=lambda: threading.Thread(target=self.geterrors).start())
+        self.error_button.grid(row=1, column=2)
+        self.EMHALT_button = tk.Button(self.root, text="Emergency Halt", command=self.EMHALT)
+        self.EMHALT_button.grid(row=1, column=1)
+        #self.run_button.pack(side=tk.LEFT)
 
         self.output_text = tk.Text(self.root, wrap="word")
-        self.output_text.pack(expand=True, fill="both")
+        self.output_text.grid(row=2, column=1)
+        self.output_text.config(height=23, width=80)
+        #self.output_text.pack(side=tk.RIGHT)
 
         self.menubar = tk.Menu(self.root)
         self.filemenu = tk.Menu(self.menubar, tearoff=0)
@@ -145,6 +234,29 @@ class JemblyIDE:
         self.menubar.add_cascade(label="Help", menu=self.helpmenu)
 
         self.root.config(menu=self.menubar)
+
+    def EMHALT(self):
+        runner.EMHALT = True
+
+    def CETS(self, errors):
+        out = ""
+        for i in errors:
+            out = out + "{} at line {}, ".format(i[0], i[1])
+        return out
+
+    def geterrors(self):
+        self.output_text.delete("1.0", tk.END)
+        self.output_text.insert(tk.END, "finding errors...")
+        errors = runner.geterrors(self.text_editor.get("1.0", "end-1c"))
+        if errors == []:
+            self.output_text.insert(tk.END, "\nNo errors found.")
+        else:
+            self.output_text.insert(tk.END, "\nErrors: {}".format(self.CETS(errors)))
+        self.output_text.see("end")
+
+    def updatelines(self):
+        self.output_text.focus_set()
+        self.text_editor.focus_set()
 
     def listinstructions(self):
         self.text_editor.delete("1.0", tk.END)
@@ -204,6 +316,7 @@ pri
         file = open(name, 'r')
         file = file.read()
         self.text_editor.insert(tk.END, file)
+        self.text_editor.focus_set()
 
     def save(self):
         name = filedialog.asksaveasfilename(
@@ -217,12 +330,12 @@ pri
 
     def custom_inp(self):
         sys.stdout = sys.__stdout__
-        input_value = tk.simpledialog.askstring("Input", "in:")
+        input_value = easygui.enterbox("In:", "Input")
         runner.setstate("c", input_value)
         sys.stdout = self.output_stream
 
     def custom_pri(self):
-        print(runner.states["c"])
+        print(runner.states["c"], file=self.output_stream)
         sys.stdout.flush()
         output = self.output_stream.getvalue()
         self.output_text.delete("1.0", tk.END)
@@ -230,6 +343,7 @@ pri
         self.output_text.see("end")
 
     def run_jembly_code(self):
+        self.output_text.delete("1.0", tk.END)
         code = self.text_editor.get("1.0", "end-1c")
         self.output_stream = StringIO()
         sys.stdout = self.output_stream
@@ -238,6 +352,9 @@ pri
         runner.instructions["pri"] = lambda: self.custom_pri()
 
         runner.execcode(code)
+
+        runner.instructions["inp"] = runner.inp
+        runner.instructions["pri"] = runner.pri
 
         sys.stdout = sys.__stdout__
         output = self.output_stream.getvalue()
@@ -250,6 +367,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = JemblyIDE(root)
     root.mainloop()
-
-
 
