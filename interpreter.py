@@ -75,7 +75,7 @@ class interpreter():
         pass
 
     def findfirstcom(self, target):
-        for i in range(self.pointer, 0, -1):
+        for i in range(self.pointer, -1, -1):
             if self.lines[i] != "":
                 if self.lines[i].split(" ")[0] == target:
                     return i
@@ -87,10 +87,12 @@ class interpreter():
                 temp = self.findfirstcom("lsta")
                 if temp == False:
                     self.errors.append(("lsta wasn't found", self.pointer),)
+                    raise TypeError("lsta wasn't found")
                 else:
                     self.pointer = self.findfirstcom("lsta")
-        except:
+        except KeyError:
             self.errors.append(("Register D is not saved/set yet", self.pointer),)
+            raise TypeError("Register D is not saved/set yet")
 
     def lsetstate(self, state, val):
         self.states[state] = self.lines[int(val)]
@@ -157,7 +159,7 @@ class interpreter():
                     print("error at line {}, error: {}.".format(self.pointer, e))
                     input("press enter to continue ")
                 else:
-                    return True
+                    return (True, e, self.pointer+1)
 
     def execcode(self, code):
         self.EMHALT = False
@@ -166,9 +168,10 @@ class interpreter():
         while self.pointer < len(self.lines):
             if self.lines[self.pointer] != "":
                 temp = self.execline(self.pointer, False)
-                if temp == True:
-                    print("ERROR")
-                    break
+                if temp != None:
+                    if temp[0] == True:
+                        print("ERROR: {} at line {}".format(temp[1], temp[2]))
+                        break
             self.pointer += 1
         print()
         print("program finished")
@@ -183,6 +186,7 @@ class interpreter():
         self.instructions["inp"] = self.PHinp
         self.instructions["pri"] = self.PHpri
         self.errors = []
+        self.states = {}
         self.lines = code.split("\n")
         self.pointer = 0
         while self.pointer < len(self.lines):
@@ -351,7 +355,7 @@ pri
         runner.instructions["inp"] = lambda: self.custom_inp()
         runner.instructions["pri"] = lambda: self.custom_pri()
 
-        runner.execcode(code)
+        threading.Thread(target=runner.execcode(code)).start()
 
         runner.instructions["inp"] = runner.inp
         runner.instructions["pri"] = runner.pri
@@ -367,4 +371,3 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = JemblyIDE(root)
     root.mainloop()
-
